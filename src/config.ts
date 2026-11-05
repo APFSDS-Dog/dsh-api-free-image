@@ -12,13 +12,15 @@ export const PLUGIN_ID = 'dsh-api-free-image'
 export const PLUGIN_DISPLAY_NAME = 'API免费生图'
 
 /**
- * 注册 / 获取 API Key 的链接。
+ * 注册 / 获取 API Key 的链接（已带本插件作者的邀请码）。
  *
- * 👉 想放自己的邀请码（AFF）：直接改这一行，例如
- *    'https://cloud.siliconflow.cn/account/ak?affiliate_code=XXXXXXXX'
- * UI 上的「去注册获取」和它下面那行小字都会跟着变。
+ * 👉 想换成自己的邀请码：直接改这一行，形如
+ *    'https://cloud.siliconflow.cn/i/你的邀请码'
+ *    （旧的 query 写法 '.../account/ak?affiliate_code=XXX' 也行，但 /i/ 落地页
+ *      才能保证邀请关系被记录。）
+ * UI 上的「去注册获取」、链接下面那行小字、以及 README 里的注册链接都跟着这一处走。
  */
-export const SIGNUP_URL = 'https://cloud.siliconflow.cn/account/ak'
+export const SIGNUP_URL = 'https://cloud.siliconflow.cn/i/Qt3zAfmr'
 
 /** 默认生图平台（将来接第二个平台时，改这里或按 README 注册新 provider）。 */
 export const DEFAULT_PROVIDER_ID = 'siliconflow'

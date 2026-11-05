@@ -144,7 +144,7 @@ const expected = [
   ['标题 API免费生图', /API免费生图/],
   ['提示文案 输入你的 API Key', /输入你的 API Key/],
   ['注册链接文字 去注册获取', /去注册获取/],
-  ['注册链接地址', /https:\/\/cloud\.siliconflow\.cn\/account\/ak/],
+  ['注册链接地址（带邀请码）', /https:\/\/cloud\.siliconflow\.cn\/i\/Qt3zAfmr/],
   ['AFF 备注 通过此链接注册可支持本插件开发', /通过此链接注册可支持本插件开发/],
   ['密码输入框', /type="password"/],
   ['保存按钮', />\s*保存\s*</],
