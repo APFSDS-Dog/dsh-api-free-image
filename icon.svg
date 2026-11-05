@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="SiliconFlow Kolors free image generation">
+  <defs>
+    <linearGradient id="kfi-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4b8dff" />
+      <stop offset="1" stop-color="#8f5bff" />
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#kfi-bg)" />
+  <g fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="15" y="17" width="34" height="30" rx="7" />
+    <path d="M20 40.5l7.5-7.5 5.5 5.5 6.5-6.5 6.5 6.5" />
+  </g>
+  <circle cx="40.5" cy="25.5" r="3.2" fill="#ffffff" />
+</svg>

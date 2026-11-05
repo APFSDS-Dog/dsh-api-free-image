@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "API free image generation",
+    "description": "Free text-to-image through an API: four parameters only, hard-locked free model, local IPM=2 / IPD=400 quota, images saved to your Pictures folder (configurable)."
+  }
+}

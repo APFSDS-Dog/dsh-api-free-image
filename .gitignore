@@ -1,0 +1,24 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 打包产物（发给别人的 .tgz 不进仓库）
+*.tgz
+
+# 构建缓存 / 临时目录
+dist/
+*.tsbuildinfo
+.tmp-home/
+*.log
+
+# 本地环境与凭据（防止误提交 Key）
+.env
+.env.*
+!.env.example
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

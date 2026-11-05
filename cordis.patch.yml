@@ -1,0 +1,10 @@
+# dsh-api-free-image bundle patch
+#
+# 这个文件把插件行插进 DSH profile 的 Loader 组合里：
+#   - 同一个包名同时代表两个半边：
+#       · 出口 "."        → lib/index.js   Host 半（注册工具 + 配置路由）
+#       · 出口 "./client" → lib/client.js  Client 半（设置卡片），
+#         由 package.json 的 dsh.client 声明触发加载
+- insert:
+    - id: api-free-image
+      name: 'dsh-api-free-image'

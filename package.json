@@ -1,0 +1,86 @@
+{
+  "name": "dsh-api-free-image",
+  "displayName": "API免费生图",
+  "version": "1.1.0",
+  "description": "Free API image generation for DeepSeek Harness: four parameters only, hard-locked free model, local IPM/IPD quota, native folder picker for the output directory, and a settings card for the API key. Ships a zero-dependency stdio MCP server.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./mcp-server": {
+      "default": "./lib/mcp-server.js"
+    },
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-api-free-image-mcp": "lib/mcp-server.js"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/mcp-server.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "check:client": "node scripts/check-client.mjs",
+    "check:request": "node scripts/check-request.mjs",
+    "check": "npm run typecheck && npm run build && npm run check:client && npm run check:request",
+    "prepublishOnly": "npm run build",
+    "pack:tgz": "npm run build && npm pack"
+  },
+  "engines": {
+    "node": ">=20.10.0",
+    "dsh": ">=0.2.1-rc.5 <0.3.0-0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/APFSDS-Dog/dsh-api-free-image.git"
+  },
+  "homepage": "https://github.com/APFSDS-Dog/dsh-api-free-image#readme",
+  "bugs": {
+    "url": "https://github.com/APFSDS-Dog/dsh-api-free-image/issues"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.12",
+    "esbuild": "^0.25.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.9.0"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "image-generation",
+    "text-to-image",
+    "siliconflow",
+    "kolors",
+    "mcp",
+    "free-api"
+  ],
+  "license": "MIT"
+}
