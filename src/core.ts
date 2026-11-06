@@ -122,10 +122,18 @@ export interface ProviderKeyRecord {
   savedAt?: string
 }
 
+/** 纯界面偏好（不改生图行为，只是记着用户把界面调成了什么样）。 */
+export interface UiSettings {
+  /** true = 插件页那段说明（README）收起，下次进来还收起。 */
+  hideDocs?: boolean
+}
+
 export interface StoredConfig {
   version: 1
   /** 用户自定义的图片根目录；缺省/null 表示用系统「我的图片」。 */
   outputDir?: string | null
+  /** 界面偏好。 */
+  ui?: UiSettings
   providers: Record<string, ProviderKeyRecord>
 }
 
@@ -134,6 +142,12 @@ function normalizeConfig(raw: unknown): StoredConfig {
   if (!isRecord(raw)) return config
   if (typeof raw.outputDir === 'string' && raw.outputDir.trim() !== '') {
     config.outputDir = raw.outputDir.trim()
+  }
+  const ui = raw.ui
+  if (isRecord(ui)) {
+    const settings: UiSettings = {}
+    if (typeof ui.hideDocs === 'boolean') settings.hideDocs = ui.hideDocs
+    if (Object.keys(settings).length > 0) config.ui = settings
   }
   const providers = raw.providers
   if (isRecord(providers)) {
@@ -168,6 +182,38 @@ async function readStoredConfig(): Promise<StoredConfig> {
 
 async function writeStoredConfig(config: StoredConfig): Promise<void> {
   await writeJsonFile(pluginPaths().configFile, config, 0o600)
+}
+
+// ---------------------------------------------------------------------------
+// 界面偏好（说明收起状态）
+// ---------------------------------------------------------------------------
+
+/** 卡片按钮读的状态：说明现在是收起还是展开。 */
+export interface UiPrefs {
+  readonly hideDocs: boolean
+}
+
+export async function readUiPrefs(): Promise<UiPrefs> {
+  const config = await readStoredConfig()
+  return { hideDocs: config.ui?.hideDocs === true }
+}
+
+/**
+ * 记下「说明是收起还是展开」。
+ *
+ * 存进同一份 config.json（跟 Key、保存位置一起），所以关掉 DSH 再开、
+ * 换了端口、换了会话，都还记得。
+ */
+export async function setUiPrefs(patch: { hideDocs?: boolean }): Promise<UiPrefs> {
+  return await serialize(async () => {
+    const config = await readStoredConfig()
+    const settings: UiSettings = { ...(config.ui ?? {}) }
+    if (typeof patch.hideDocs === 'boolean') settings.hideDocs = patch.hideDocs
+    if (Object.keys(settings).length > 0) config.ui = settings
+    else delete config.ui
+    await writeStoredConfig(config)
+    return { hideDocs: config.ui?.hideDocs === true }
+  })
 }
 
 // ---------------------------------------------------------------------------

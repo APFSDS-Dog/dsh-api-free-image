@@ -15,7 +15,16 @@
  * 因为反过来再套一层子进程 MCP 只会多一个可能挂掉的环节，功能完全一样。
  */
 import { PLUGIN_ID } from '../config.js'
-import { clearApiKey, RATE_LIMIT_IPD, RATE_LIMIT_IPM, readStatus, setOutputDir, writeApiKey } from '../core.js'
+import {
+  clearApiKey,
+  RATE_LIMIT_IPD,
+  RATE_LIMIT_IPM,
+  readStatus,
+  readUiPrefs,
+  setOutputDir,
+  setUiPrefs,
+  writeApiKey,
+} from '../core.js'
 import { errorMessage } from '../errors.js'
 import { TOOL_SPECS } from '../tools.js'
 
@@ -90,9 +99,9 @@ async function readJsonBody(request: IncomingMessageLike): Promise<Record<string
   return parsed as Record<string, unknown>
 }
 
-/** 设置卡片读的完整状态：Key 来源 + 用量 + 输出目录 + 锁死的模型。 */
+/** 设置卡片读的完整状态：Key 来源 + 用量 + 输出目录 + 锁死的模型 + 界面偏好。 */
 async function buildStatusPayload(): Promise<Record<string, unknown>> {
-  const report = await readStatus()
+  const [report, ui] = await Promise.all([readStatus(), readUiPrefs()])
   return {
     ok: true,
     configured: report.apiKey.configured,
@@ -110,6 +119,7 @@ async function buildStatusPayload(): Promise<Record<string, unknown>> {
     },
     output: report.output,
     paths: report.paths,
+    ui,
   }
 }
 
@@ -187,6 +197,33 @@ function registerRoutes(ctx: HostContext): void {
     },
   }
 
+  /**
+   * 记「说明收起 / 展开」。
+   * 传 `{ hideDocs: true }` 收起，`{ hideDocs: false }` 展开。
+   * 存在 config.json 的 `ui` 段里，跟 Key、保存位置同一份文件。
+   */
+  const uiPrefsRoute: WebRoute = {
+    kind: 'exact',
+    path: `${ROUTE_PREFIX}/ui-prefs`,
+    async handler(request, response) {
+      if ((request.method ?? 'GET').toUpperCase() !== 'POST') {
+        sendJson(response, 405, { ok: false, error: '只支持 POST' })
+        return
+      }
+      try {
+        const body = await readJsonBody(request)
+        const hideDocs = body.hideDocs
+        if (typeof hideDocs !== 'boolean') {
+          sendJson(response, 400, { ok: false, error: 'hideDocs 必须是布尔值' })
+          return
+        }
+        sendJson(response, 200, { ok: true, ui: await setUiPrefs({ hideDocs }) })
+      } catch (error) {
+        sendJson(response, 400, { ok: false, error: errorMessage(error) })
+      }
+    },
+  }
+
   // 只有 web 宿主才有的服务：没有它（例如 headless 组合）就跳过 UI 路由。
   ctx.inject(['webServer'], (scoped) => {
     if (scoped.webServer === undefined) return
@@ -195,6 +232,7 @@ function registerRoutes(ctx: HostContext): void {
         scoped.webServer?.register(statusRoute) ?? (() => {}),
         scoped.webServer?.register(keyRoute) ?? (() => {}),
         scoped.webServer?.register(outputDirRoute) ?? (() => {}),
+        scoped.webServer?.register(uiPrefsRoute) ?? (() => {}),
       ]
       return () => {
         for (const dispose of disposers) {

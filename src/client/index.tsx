@@ -31,6 +31,8 @@ interface StatusPayload {
   limits: { ipm: number; ipd: number }
   usage: { date: string; todayCount: number; minuteCount: number; remainingToday: number }
   output: { dir: string; source: 'default' | 'custom'; defaultDir: string; todayImageDir: string }
+  /** 界面偏好：说明（README 那段）是不是收起了。 */
+  ui?: { hideDocs?: boolean }
 }
 
 const zh: Record<string, string> = {
@@ -55,6 +57,11 @@ const zh: Record<string, string> = {
   changeLocation: '更改保存位置',
   resetLocation: '恢复默认',
   picking: '等待选择…',
+  hideDocs: '收起说明',
+  showDocs: '显示说明',
+  hideDocsTitle: '把上面那段说明收起来（下次进来还是收起的）',
+  showDocsTitle: '把说明展开',
+  docsFailed: '切换说明显示失败：{error}',
   locationSaved: '✅ 保存位置已更新',
   locationReset: '✅ 已恢复默认保存位置',
   loadFailed: '读取本地状态失败：{error}',
@@ -86,6 +93,11 @@ const en: Record<string, string> = {
   changeLocation: 'Change folder',
   resetLocation: 'Use default',
   picking: 'Waiting for the picker…',
+  hideDocs: 'Hide docs',
+  showDocs: 'Show docs',
+  hideDocsTitle: 'Fold the docs above; it stays folded next time',
+  showDocsTitle: 'Unfold the docs',
+  docsFailed: 'Could not toggle the docs: {error}',
   locationSaved: '✅ Save location updated',
   locationReset: '✅ Back to the default folder',
   loadFailed: 'Could not read local status: {error}',
@@ -100,6 +112,9 @@ type Translate = (key: string, vars?: Record<string, string | number>) => string
 const CSS = `
 .kfi{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-alias-bg-layer-2,transparent);color:var(--dsw-alias-label-primary);box-sizing:border-box}
 .kfi-head{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.kfi-headRight{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.kfi-docsBtn{display:inline-flex;align-items:center;gap:5px}
+.kfi-docsBtn svg{width:11px;height:11px;flex:0 0 auto;opacity:.85}
 .kfi-title{display:flex;align-items:center;gap:8px;font-size:14px;line-height:20px;font-weight:600}
 .kfi-mark{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#4b8dff,#8f5bff);color:#fff;flex:0 0 auto}
 .kfi-badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:16px;padding:1px 8px;border-radius:6px;white-space:nowrap}
@@ -130,6 +145,9 @@ const CSS = `
 .kfi-msg{font-size:12px;line-height:18px;word-break:break-word}
 .kfi-msg[data-kind="ok"]{color:var(--dsw-alias-state-success-primary)}
 .kfi-msg[data-kind="error"]{color:var(--dsw-alias-state-error-primary)}
+/* 说明收起：只隐藏「紧挨着我们设置卡片」的那一个说明文档块（宿主渲染的 README），
+   用 :has() 锁定关系，别的插件页的说明不受影响。 */
+html.kfi-hide-docs section[data-detail-document]:has(+ section[data-plugin-config] .kfi){display:none!important}
 `
 
 function fill(template: string, vars: Record<string, string | number>): string {
@@ -151,13 +169,15 @@ interface CardProps {
   view?: 'summary' | 'page'
 }
 
-type Busy = null | 'key' | 'dir'
+type Busy = null | 'key' | 'dir' | 'docs'
 
 export function ApiFreeImageCard({ t, pick }: CardProps): JSX.Element {
   const [status, setStatus] = useState<StatusPayload | null>(null)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState<Busy>(null)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
+  /** 说明（宿主渲染的 README）是否收起；真实值以 Host 存的为准。 */
+  const [hideDocs, setHideDocs] = useState(false)
   const aliveRef = useRef(true)
 
   const refresh = useCallback(async () => {
@@ -179,6 +199,21 @@ export function ApiFreeImageCard({ t, pick }: CardProps): JSX.Element {
       aliveRef.current = false
     }
   }, [refresh, t])
+
+  // Host 的状态回来了就跟着它（卡片重开、别处改过都以 Host 为准）。
+  useEffect(() => {
+    if (status === null) return
+    setHideDocs(status.ui?.hideDocs === true)
+  }, [status])
+
+  // 把「收起说明」落到页面上：靠 <html> 上的一个类，配合 CSS 隐藏宿主的说明文档块。
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('kfi-hide-docs', hideDocs)
+    return () => {
+      root.classList.remove('kfi-hide-docs')
+    }
+  }, [hideDocs])
 
   const submitKey = useCallback(
     async (value: string) => {
@@ -210,6 +245,34 @@ export function ApiFreeImageCard({ t, pick }: CardProps): JSX.Element {
     },
     [refresh, t],
   )
+
+  /** 收起 / 展开说明：先动界面（跟手），再把选择存进 Host。 */
+  const toggleDocs = useCallback(async () => {
+    const next = !hideDocs
+    setHideDocs(next)
+    setBusy('docs')
+    setMessage(null)
+    try {
+      const response = await fetch(`${API_BASE}/ui-prefs`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ hideDocs: next }),
+      })
+      const payload = (await response.json()) as { ok?: boolean; error?: string; ui?: { hideDocs?: boolean } }
+      if (payload.ok !== true) throw new Error(payload.error ?? `HTTP ${response.status}`)
+      if (aliveRef.current && typeof payload.ui?.hideDocs === 'boolean') setHideDocs(payload.ui.hideDocs)
+    } catch (error) {
+      if (aliveRef.current) {
+        setHideDocs(!next)
+        setMessage({
+          kind: 'error',
+          text: fill(t('docsFailed'), { error: error instanceof Error ? error.message : String(error) }),
+        })
+      }
+    } finally {
+      if (aliveRef.current) setBusy(null)
+    }
+  }, [hideDocs, t])
 
   /** 弹出系统文件夹选择框 → 把结果存进 Host。 */
   const chooseLocation = useCallback(async () => {
@@ -295,9 +358,35 @@ export function ApiFreeImageCard({ t, pick }: CardProps): JSX.Element {
           </span>
           {t('title')}
         </div>
-        <span className="kfi-badge" data-on={configured ? 'true' : 'false'}>
-          {configured ? `✅ ${t('configured')}` : `⚠️ ${t('notConfigured')}`}
-        </span>
+        <div className="kfi-headRight">
+          <button
+            className="kfi-btn kfi-docsBtn"
+            data-variant="ghost"
+            data-size="sm"
+            type="button"
+            aria-expanded={!hideDocs}
+            title={hideDocs ? t('showDocsTitle') : t('hideDocsTitle')}
+            disabled={busyAny}
+            onClick={() => {
+              if (busyAny) return
+              void toggleDocs()
+            }}
+          >
+            {hideDocs ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 15l6-6 6 6" />
+              </svg>
+            )}
+            {hideDocs ? t('showDocs') : t('hideDocs')}
+          </button>
+          <span className="kfi-badge" data-on={configured ? 'true' : 'false'}>
+            {configured ? `✅ ${t('configured')}` : `⚠️ ${t('notConfigured')}`}
+          </span>
+        </div>
       </div>
 
       <div>

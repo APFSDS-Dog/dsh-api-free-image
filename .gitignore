@@ -22,3 +22,6 @@ dist/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 界面示意图（只在本地看，不进仓库）
+docs/mockups/
