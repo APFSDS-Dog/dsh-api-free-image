@@ -62,6 +62,7 @@ const zh: Record<string, string> = {
   hideDocsTitle: '把上面那段说明收起来（下次进来还是收起的）',
   showDocsTitle: '把说明展开',
   docsFailed: '切换说明显示失败：{error}',
+  docsUnsupported: '插件后端还是旧版本，重启 DSH 后这个按钮才可用。',
   locationSaved: '✅ 保存位置已更新',
   locationReset: '✅ 已恢复默认保存位置',
   loadFailed: '读取本地状态失败：{error}',
@@ -98,6 +99,7 @@ const en: Record<string, string> = {
   hideDocsTitle: 'Fold the docs above; it stays folded next time',
   showDocsTitle: 'Unfold the docs',
   docsFailed: 'Could not toggle the docs: {error}',
+  docsUnsupported: 'The plugin backend is still an older build — restart DSH to use this button.',
   locationSaved: '✅ Save location updated',
   locationReset: '✅ Back to the default folder',
   loadFailed: 'Could not read local status: {error}',
@@ -258,8 +260,15 @@ export function ApiFreeImageCard({ t, pick }: CardProps): JSX.Element {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ hideDocs: next }),
       })
-      const payload = (await response.json()) as { ok?: boolean; error?: string; ui?: { hideDocs?: boolean } }
-      if (payload.ok !== true) throw new Error(payload.error ?? `HTTP ${response.status}`)
+      const payload = (await response.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+        ui?: { hideDocs?: boolean }
+      }
+      // 后端是旧版本时这条路由不存在，宿主会回一个空 body；别把 JSON 解析错误抛给用户。
+      if (payload.ok !== true) {
+        throw new Error(payload.error ?? (response.ok ? `HTTP ${response.status}` : t('docsUnsupported')))
+      }
       if (aliveRef.current && typeof payload.ui?.hideDocs === 'boolean') setHideDocs(payload.ui.hideDocs)
     } catch (error) {
       if (aliveRef.current) {
@@ -333,6 +342,8 @@ export function ApiFreeImageCard({ t, pick }: CardProps): JSX.Element {
   }, [refresh, t])
 
   const configured = status?.configured === true
+  /** 宿主状态里带 `ui` 才认得这个按钮；旧后端没有就藏起来，别摆一个点了会回滚的按钮。 */
+  const docsSupported = status?.ui !== undefined
   const sourceText =
     status === null
       ? ''
@@ -359,30 +370,32 @@ export function ApiFreeImageCard({ t, pick }: CardProps): JSX.Element {
           {t('title')}
         </div>
         <div className="kfi-headRight">
-          <button
-            className="kfi-btn kfi-docsBtn"
-            data-variant="ghost"
-            data-size="sm"
-            type="button"
-            aria-expanded={!hideDocs}
-            title={hideDocs ? t('showDocsTitle') : t('hideDocsTitle')}
-            disabled={busyAny}
-            onClick={() => {
-              if (busyAny) return
-              void toggleDocs()
-            }}
-          >
-            {hideDocs ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 15l6-6 6 6" />
-              </svg>
-            )}
-            {hideDocs ? t('showDocs') : t('hideDocs')}
-          </button>
+          {docsSupported ? (
+            <button
+              className="kfi-btn kfi-docsBtn"
+              data-variant="ghost"
+              data-size="sm"
+              type="button"
+              aria-expanded={!hideDocs}
+              title={hideDocs ? t('showDocsTitle') : t('hideDocsTitle')}
+              disabled={busyAny}
+              onClick={() => {
+                if (busyAny) return
+                void toggleDocs()
+              }}
+            >
+              {hideDocs ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M6 15l6-6 6 6" />
+                </svg>
+              )}
+              {hideDocs ? t('showDocs') : t('hideDocs')}
+            </button>
+          ) : null}
           <span className="kfi-badge" data-on={configured ? 'true' : 'false'}>
             {configured ? `✅ ${t('configured')}` : `⚠️ ${t('notConfigured')}`}
           </span>

@@ -1,7 +1,7 @@
 {
   "name": "dsh-api-free-image",
   "displayName": "API免费生图",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Free API image generation for DeepSeek Harness: four parameters only, hard-locked free model, local IPM/IPD quota, native folder picker for the output directory, and a settings card for the API key. Ships a zero-dependency stdio MCP server.",
   "type": "module",
   "main": "lib/index.js",
